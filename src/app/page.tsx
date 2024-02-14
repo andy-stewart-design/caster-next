@@ -1,95 +1,72 @@
+import { PodcastIndexResponseSchema } from "@/types/podcast-index";
 import Image from "next/image";
-import styles from "./page.module.css";
+import Link from "next/link";
+import * as crypto from "node:crypto";
 
-export default function Home() {
+export default async function Home() {
+  const apiKey = process.env.PODCAST_INDEX_KEY;
+  const apiSecret = process.env.PODCAST_INDEX_SECRET;
+
+  if (!apiKey || !apiSecret) {
+    throw new Error("Missing Podcast Index credentials");
+  }
+
+  const authDate = Math.floor(Date.now() / 1000).toString();
+  const authHash = crypto
+    .createHash("sha1")
+    .update(apiKey + apiSecret + authDate)
+    .digest("hex");
+
+  const headers = new Headers();
+  headers.append("User-Agent", "Andy Podcast Client");
+  headers.append("X-Auth-Key", apiKey);
+  headers.append("X-Auth-Date", authDate);
+  headers.append("Authorization", authHash);
+
+  const response = await fetch(
+    "https://api.podcastindex.org/api/1.0/search/byterm?q=product+design&max=10&similar=true",
+    {
+      headers,
+    }
+  );
+
+  const data = await response.json();
+
+  const results = PodcastIndexResponseSchema.parse(data);
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
+    <main style={{ display: "grid", gap: "2rem" }}>
+      {results.feeds.map((show) => (
+        <Link key={show.id} href={`/show/${show.itunesId}`}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
+              style={{ aspectRatio: "1/1", flexShrink: 0, background: "#AAA" }}
+              src={show.image}
+              alt=""
               width={100}
-              height={24}
-              priority
+              height={100}
             />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
+            <div>
+              <h2 style={{ margin: 0 }}>{show.title}</h2>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <p>{show.episodeCount} Episodes</p>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    display: "flex",
+                    gap: "0.5rem",
+                  }}
+                >
+                  {Object.values(show.categories).map((category) => (
+                    <li key={category}>{category}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </Link>
+      ))}
     </main>
   );
 }
