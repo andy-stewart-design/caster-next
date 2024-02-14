@@ -3,31 +3,53 @@ import * as crypto from "node:crypto";
 import { ItunesResultSchema } from "@/types/itunes-api";
 
 export default async function Page({ params }: { params: { id: string } }) {
-  //   const authDate = Math.floor(Date.now() / 1000).toString();
-  //   const authHash = crypto
-  //     .createHash("sha1")
-  //     .update(apiKey + apiSecret + authDate)
-  //     .digest("hex");
+  const apiKey = process.env.PODCAST_INDEX_KEY;
+  const apiSecret = process.env.PODCAST_INDEX_SECRET;
 
-  //   const headers = new Headers();
-  //   headers.append("User-Agent", "Andy Podcast Client");
-  //   headers.append("X-Auth-Key", apiKey);
-  //   headers.append("X-Auth-Date", authDate);
-  //   headers.append("Authorization", authHash);
+  if (!apiKey || !apiSecret) {
+    throw new Error("Missing Podcast Index credentials");
+  }
 
-  //   const response = await fetch(
-  //       `https://api.podcastindex.org/api/1.0/episodes/byitunesid?id=${params.id}&pretty`,
-  //       { headers }
-  //       );
-  //       const data = await response.json();
+  const authDate = Math.floor(Date.now() / 1000).toString();
+  const authHash = crypto
+    .createHash("sha1")
+    .update(apiKey + apiSecret + authDate)
+    .digest("hex");
 
-  const { feed, audioLink } = await getFeed(params.id);
+  const headers = new Headers();
+  headers.append("User-Agent", "Andy Podcast Client");
+  headers.append("X-Auth-Key", apiKey);
+  headers.append("X-Auth-Date", authDate);
+  headers.append("Authorization", authHash);
+
+  async function getShow() {
+    const response = await fetch(
+      `https://api.podcastindex.org/api/1.0/podcasts/byitunesid?id=${params.id}&pretty`,
+      { headers }
+    );
+    return await response.json();
+  }
+
+  async function getEpisodes() {
+    const response = await fetch(
+      `https://api.podcastindex.org/api/1.0/episodes/byitunesid?id=${params.id}&pretty`,
+      { headers }
+    );
+    return await response.json();
+  }
+
+  const [showData, episodeData] = await Promise.all([getShow(), getEpisodes()]);
+  const audioLink = episodeData.items.at(0)?.enclosureUrl;
+  //   const { feed, audioLink } = await getFeed(params.id);
 
   return (
     <main>
       {audioLink && <audio controls src={audioLink}></audio>}
       <pre>
-        <code>{JSON.stringify(feed, null, 2)}</code>
+        <code>{JSON.stringify(showData, null, 2)}</code>
+      </pre>
+      <pre>
+        <code>{JSON.stringify(episodeData, null, 2)}</code>
       </pre>
     </main>
   );
