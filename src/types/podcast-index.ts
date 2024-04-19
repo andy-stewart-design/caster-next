@@ -20,7 +20,7 @@ export const PodcastDataSchema = z.object({
   lastHttpStatus: z.number(),
   contentType: z.string(),
   itunesId: z.number().nullable(),
-  generator: z.string(),
+  generator: z.string().nullable(),
   language: z.string(),
   type: z.number(),
   dead: z.number(),

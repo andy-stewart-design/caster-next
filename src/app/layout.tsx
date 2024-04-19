@@ -1,3 +1,5 @@
+import Playbar from "@/components/Playbar/Playbar";
+import PlaybarProvider from "@/components/Providers/PlaybarProvider";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -12,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <PlaybarProvider>
+        <body>{children}</body>
+        <Playbar />
+      </PlaybarProvider>
     </html>
   );
 }
